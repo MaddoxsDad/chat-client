@@ -16,27 +16,43 @@ SERVER_IP = "104.197.153.180"
 SERVER_PORT = 41400
 
 def connect_to_server():
-    """ Establish a connection to the chat server. """
+    """ Establish a connection to the chat server and auto-create retro rooms. """
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((SERVER_IP, SERVER_PORT))
         print(f"Connected to chat server at {SERVER_IP}:{SERVER_PORT}")
+
+        # Auto-create retro AOL-style rooms
+        retro_rooms = [
+            "TeenChat_2002", "CyberLounge_99", "WelcomeToTheInternet",
+            "N64_vs_PS1", "StarcraftLobby_1337", "Runescape_Trade",
+            "MTVTRL_Fans", "NapsterMP3Swap", "H4x0rDen", "HTML_Masters_Only",
+            "ASL_Please", "CrushConfessions_03", "BRB_Crying", "SorryIM_AFK"
+        ]
+
+        for room in retro_rooms:
+            client_socket.sendall(f"/join {room}\n".encode())  # Create the room
+            client_socket.recv(1024).decode()  # Read response (success or failure)
+
         return client_socket
+
     except Exception as e:
         print(f"Error connecting to server: {e}")
         sys.exit(1)
+
 
 def list_rooms(sock):
     """ Request a list of chat rooms from the server. """
     sock.sendall("/list\n".encode())
     try:
         room_count = int(sock.recv(1024).decode().strip())
-        print(f"Number of available rooms: {room_count}")
+        print(f"🔥 Available Chat Rooms ({room_count} total) 🔥")
         for _ in range(room_count):
             room_name = sock.recv(1024).decode().strip()
             print(f" - {room_name}")
     except Exception as e:
         print(f"Error retrieving room list: {e}")
+
 
 def join_room(sock):
     """ Allow user to join or create a chat room with a retro AOL-style name suggestion. """
