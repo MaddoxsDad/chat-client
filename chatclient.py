@@ -16,7 +16,7 @@ BUFFER_SIZE = 1024
 
 
 def connect_to_server():
-    """Establishes a connection to the chat server."""
+    """Establishes a connection to the chat server. Que AOL Preamble """
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((SERVER_IP, SERVER_PORT))
@@ -28,12 +28,12 @@ def connect_to_server():
 
 
 def get_room_list(client_socket):
-    """Requests and displays the list of available chat rooms."""
+    """Requests/displays list of available chat rooms."""
     client_socket.sendall("/list".encode())
     raw_data = client_socket.recv(BUFFER_SIZE).decode().strip()
 
     if not raw_data.isdigit():  # Handle unexpected responses
-        print(f" Server returned an invalid response: '{raw_data}'")
+        print(f" Server returned an invalid response or I broke something: '{raw_data}'")
         return
 
     room_count = int(raw_data)
@@ -51,27 +51,27 @@ def join_room(client_socket):
     while True:
         room_name = input("Enter a room name to join (or create): ").strip()
         if not room_name:
-            print("Room name cannot be empty.")
+            print("Room name cannot be empty. Empty is taken")
             continue
 
         client_socket.sendall(f"/join {room_name}".encode())
         response = client_socket.recv(BUFFER_SIZE).decode().strip()
 
         if response == "0":
-            print(f"Joined room: {room_name}")
+            print(f"Yaaaay!Joined room: {room_name}")
             return room_name
         elif response == "1":
-            print("Invalid room name format. Try again.")
+            print("Invalid room name format. C'mon it's pretty simple just /ROOMNAME  Try again.")
         else:
-            print("Unexpected server response. Try again.")
+            print("Unexpected server response. Doh! Try again.")
 
 
 def set_nickname(client_socket):
-    """Prompts for and set a unique nickname."""
+    """Prompts for/sets a unique nickname."""
     while True:
         nickname = input("Enter your nickname: ").strip()
         if not nickname:
-            print("Nickname cannot be empty.")
+            print("Your name is not blank space. Please enter a nickname.")
             continue
 
         client_socket.sendall(f"/nick {nickname}".encode())
@@ -81,15 +81,15 @@ def set_nickname(client_socket):
             print(f"Nickname set to: {nickname}")
             return
         elif response == "1":
-            print("Invalid nickname format. Try again.")
+            print("Invalid nickname format....probably. Try again.")
         elif response == "2":
-            print("Nickname already taken. Choose another.")
+            print("Nickname already taken. OG names only. Choose another.")
         else:
-            print("Unexpected server response. Try again.")
+            print("Unexpected server response. It could be you, but it's probably me. Try again.")
 
 
 def list_users(client_socket):
-    """Shows who's in the chat rooms."""
+    """Shows present users in the chat rooms."""
     client_socket.sendall("/who".encode())
     print("Users in the room:")
     while True:
@@ -100,8 +100,8 @@ def list_users(client_socket):
 
 
 def chat(client_socket):
-    """So you can....chat in the chat room."""
-    print("You are now in the chat. Type your messages and press Enter to send.")
+    """Handles chat functionality, including logout."""
+    print("You made it into the chat. Welcome to 1996! Type messages and press Enter to send.")
     print("Type '/who' to list users or '/logout' to exit.")
 
     while True:
@@ -111,21 +111,19 @@ def chat(client_socket):
             if source == client_socket:
                 message = client_socket.recv(BUFFER_SIZE).decode().strip()
                 if not message:
-                    print("Disconnected from the server.")
-                    client_socket.close()
-                    sys.exit(0)
-                print(message)  # Display incoming message
+                    print("Disconnected.")
+                    return  # Just return instead of sys.exit()
+
+                print(message)
+
             elif source == sys.stdin:
-                user_message = sys.stdin.readline().strip()
+                user_message = input().strip()
+                client_socket.sendall(f"{user_message}\n".encode())
+
                 if user_message.lower() == "/logout":
-                    client_socket.sendall("/logout".encode())
-                    print("You have logged out.")
+                    print("Logging out...")
                     client_socket.close()
-                    sys.exit(0)
-                elif user_message.lower() == "/who":
-                    list_users(client_socket)
-                else:
-                    client_socket.sendall(user_message.encode())  # Send user message to server
+                    return  # Just return to exit the function
 
 
 def main():
