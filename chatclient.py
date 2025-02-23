@@ -112,18 +112,26 @@ def chat(client_socket):
                 message = client_socket.recv(BUFFER_SIZE).decode().strip()
                 if not message:
                     print("Disconnected.")
-                    return  # Just return instead of sys.exit()
+                    client_socket.close()  # Close connection to prevent issues
+                    return  # Exit the function
 
                 print(message)
 
             elif source == sys.stdin:
                 user_message = input().strip()
-                client_socket.sendall(f"{user_message}\n".encode())
 
                 if user_message.lower() == "/logout":
                     print("Logging out...")
-                    client_socket.close()
-                    return  # Just return to exit the function
+                    client_socket.sendall("/logout\n".encode())  # Send logout command
+                    client_socket.close()  # Ensure connection is closed
+                    return  # Exit the function
+
+                elif user_message.lower() == "/who":
+                    client_socket.sendall("/who\n".encode())  # Request user list
+
+                else:
+                    client_socket.sendall(f"{user_message}\n".encode())  # Send message
+        # Just return to exit the function
 
 
 def main():
