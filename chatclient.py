@@ -109,28 +109,44 @@ def chat(client_socket):
 
         for source in reads:
             if source == client_socket:
-                message = client_socket.recv(BUFFER_SIZE).decode().strip()
-                if not message:
-                    print("Disconnected.")
-                    client_socket.close()
-                    return  # Exit the function
-
-                print(message)
+                try:
+                    message = client_socket.recv(BUFFER_SIZE).decode().strip()
+                    if not message:
+                        print("Disconnected.")
+                        client_socket.close()
+                        return  # Exit function if disconnected
+                    print(message)
+                except Exception:
+                    print("Connection lost.")
+                    return  # Exit function if the server disconnects unexpectedly
 
             elif source == sys.stdin:
                 user_message = input().strip()
 
                 if user_message.lower() == "/logout":
                     print("Logging out...")
-                    client_socket.sendall("/logout\n".encode())  # Send logout properly...or not
-                    client_socket.close()  # Close socket
-                    exit(0)  # Force quit the program
+                    try:
+                        client_socket.sendall("/logout\n".encode())  # Send logout command
+                    except Exception:
+                        pass  # Ignore error if server closes first
+
+                    client_socket.close()  # Close connection
+                    sys.exit(0)  # Force program to exit
 
                 elif user_message.lower() == "/who":
                     client_socket.sendall("/who\n".encode())  # Request user list
+                    print("\nUsers in the room:")
+                    
+                    while True:
+                        user = client_socket.recv(BUFFER_SIZE).decode().strip()
+                        if not user:
+                            break  # End loop when done
+                        print(f"- {user}")
+
+                    print("\nPlease type a message or enter /logout to exit.")  # ✅ Added prompt after /who
 
                 else:
-                    client_socket.sendall(f"{user_message}\n".encode()) # Send message
+                    client_socket.sendall(f"{user_message}\n".encode())  # Send message
 
 
 def main():
