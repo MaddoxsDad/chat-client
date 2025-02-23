@@ -30,7 +30,13 @@ def connect_to_server():
 def get_room_list(client_socket):
     """Requests and displays the list of available chat rooms."""
     client_socket.sendall("/list".encode())
-    room_count = int(client_socket.recv(BUFFER_SIZE).decode().strip())
+    raw_data = client_socket.recv(BUFFER_SIZE).decode().strip()
+
+    if not raw_data.isdigit():  # Handle unexpected responses
+        print(f" Server returned an invalid response: '{raw_data}'")
+        return
+
+    room_count = int(raw_data)
     if room_count == 0:
         print("No chat rooms available.")
     else:
@@ -110,7 +116,7 @@ def chat(client_socket):
                     sys.exit(0)
                 print(message)  # Display incoming message
             elif source == sys.stdin:
-                user_message = input()
+                user_message = sys.stdin.readline().strip()
                 if user_message.lower() == "/logout":
                     client_socket.sendall("/logout".encode())
                     print("You have logged out.")
