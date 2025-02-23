@@ -55,7 +55,7 @@ def list_rooms(sock):
 
 
 def join_room(sock):
-    """ Allow user to join or create a chat room with a retro AOL-style name suggestion. """
+    """ Allow user to join or create a chat room, with retro AOL-style suggestions. """
     room_suggestions = [
         "TeenChat_2002", "CyberLounge_99", "WelcomeToTheInternet",
         "N64_vs_PS1", "StarcraftLobby_1337", "Runescape_Trade",
@@ -63,9 +63,19 @@ def join_room(sock):
         "ASL_Please", "CrushConfessions_03", "BRB_Crying", "SorryIM_AFK"
     ]
     
-    print("\n🔥 **Retro Chat Rooms** 🔥")
+    print("\n🔥 **Suggested Retro Chat Rooms** 🔥")
     for room in room_suggestions:
         print(f" - {room}")
+
+    while True:
+        room_name = input("\nEnter the room name to join (or create a new one): ")
+        sock.sendall(f"/join {room_name}\n".encode())
+        response = sock.recv(1024).decode().strip()
+        if response == "0":
+            print(f"✅ Successfully joined room: {room_name}")
+            return True
+        else:
+            print("❌ Invalid room name format. Try again.")
 
     while True:
         room_name = input("\nEnter the room name to join (or create a new one): ")
