@@ -44,14 +44,23 @@ def connect_to_server():
 def list_rooms(sock):
     """ Request a list of chat rooms from the server. """
     sock.sendall("/list\n".encode())
+
     try:
-        room_count = int(sock.recv(1024).decode().strip())
-        print(f"🔥 Available Chat Rooms ({room_count} total) 🔥")
+        room_count_data = sock.recv(1024).decode().strip()
+        if not room_count_data.isdigit():
+            print(f"❌ Server returned an invalid response: '{room_count_data}'")
+            return
+
+        room_count = int(room_count_data)
+        print(f"📢 Number of available rooms: {room_count}")
+
         for _ in range(room_count):
             room_name = sock.recv(1024).decode().strip()
             print(f" - {room_name}")
+
     except Exception as e:
-        print(f"Error retrieving room list: {e}")
+        print(f"❌ Error retrieving room list: {e}")
+
 
 
 def join_room(sock):
