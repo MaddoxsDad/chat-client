@@ -1,15 +1,18 @@
+import socket
 import select
 import sys
 
-# Chat Client - Rushing to finish this before the deadline.
-# Connects to the chat server, lets me join rooms, pick a nickname, and chat.
-# No extra fluff, just what’s required.
+# Student Name: [Your Name]
+# Program Name: Chat Client
+# Purpose: This program connects to a chat server, allows users to join rooms, select a nickname, and chat with others.
+# Honor Pledge: "I have neither given nor received unauthorized aid on this assignment."
 
+# Server details
 SERVER_IP = "104.197.153.180"
 SERVER_PORT = 41400
 
 def connect_to_server():
-    """ Connect to the chat server. """
+    """ Establish a connection to the chat server. """
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((SERVER_IP, SERVER_PORT))
@@ -20,49 +23,51 @@ def connect_to_server():
         sys.exit(1)
 
 def list_rooms(sock):
-    """ Ask for the list of rooms. """
+    """ Request a list of chat rooms from the server. """
     sock.sendall("/list\n".encode())
     try:
-        room_count = int(sock.recv(1024).decode().strip())  # Get number of rooms
+        room_count = int(sock.recv(1024).decode().strip())
         print(f"Number of available rooms: {room_count}")
         for _ in range(room_count):
-            print(f" - {sock.recv(1024).decode().strip()}")  # Print each room name
+            room_name = sock.recv(1024).decode().strip()
+            print(f" - {room_name}")
     except Exception as e:
         print(f"Error retrieving room list: {e}")
 
 def join_room(sock):
-    """ Join a room. If invalid, keep asking. """
+    """ Allow user to join or create a chat room. """
     while True:
         room_name = input("Enter the room name to join (or create a new one): ")
         sock.sendall(f"/join {room_name}\n".encode())
         response = sock.recv(1024).decode().strip()
         if response == "0":
-            print(f"Joined room: {room_name}")
+            print(f"Successfully joined room: {room_name}")
             return True
         else:
-            print("Invalid room name. Try again.")
+            print("Invalid room name format. Try again.")
 
 def set_nickname(sock):
-    """ Pick a nickname. Keep trying if taken or invalid. """
+    """ Allow user to choose a nickname. """
     while True:
         nickname = input("Enter a nickname: ")
         sock.sendall(f"/nick {nickname}\n".encode())
         response = sock.recv(1024).decode().strip()
         if response == "0":
-            print(f"Nickname set to: {nickname}")
+            print(f"Nickname set to {nickname}")
             return True
         elif response == "2":
-            print("Nickname already taken. Try another.")
+            print("Nickname is already taken. Choose another one.")
         else:
             print("Invalid nickname format. Try again.")
 
 def chat_loop(sock):
-    """ Core chat functionality. Send/receive messages. """
-    print("\n[ In the chatroom. Type messages to chat. ]")
-    print("[ Use '/who' to list users or '/logout' to exit. ]\n")
+    """ Handle chat interaction between user and server. """
+    print("\n[ You are now in the chatroom! Type messages to chat. ]")
+    print("[ Type '/who' to see who is online, or '/logout' to exit. ]\n")
 
     while True:
         reads, _, _ = select.select([sock, sys.stdin], [], [])
+        
         for source in reads:
             if source == sock:
                 message = sock.recv(1024).decode().strip()
@@ -73,6 +78,7 @@ def chat_loop(sock):
             else:
                 user_input = sys.stdin.readline().strip()
                 sock.sendall(f"{user_input}\n".encode())
+                
                 if user_input == "/logout":
                     print("Logging out...")
                     sock.close()
@@ -90,8 +96,8 @@ def main():
             if join_room(sock):
                 break
         else:
-            print("Invalid command. Use '/list' or '/join [room_name]'.")
-    
+            print("Invalid command. Please use '/list' or '/join [room_name]'.")
+
     if set_nickname(sock):
         chat_loop(sock)
 
