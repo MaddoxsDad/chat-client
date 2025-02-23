@@ -1,18 +1,22 @@
+"""
+Author: [Your Name]
+Program: Chat Client
+Description: A simple chat client that connects to a chat server, allows users to join rooms, 
+set nicknames, send/receive messages, list users, and logout.
+"""
+
 import socket
 import select
 import sys
 
-# Student Name: [Your Name]
-# Program Name: Chat Client
-# Purpose: This program connects to a chat server, allows users to join rooms, select a nickname, and chat with others.
-# Honor Pledge: "I have neither given nor received unauthorized aid on this assignment."
-
 # Server details
 SERVER_IP = "104.197.153.180"
 SERVER_PORT = 41400
+BUFFER_SIZE = 1024
+
 
 def connect_to_server():
-    """ Establish a connection to the chat server. """
+    """Establishes a connection to the chat server."""
     try:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((SERVER_IP, SERVER_PORT))
@@ -22,84 +26,126 @@ def connect_to_server():
         print(f"Error connecting to server: {e}")
         sys.exit(1)
 
-def list_rooms(sock):
-    """ Request a list of chat rooms from the server. """
-    sock.sendall("/list\n".encode())
-    try:
-        room_count = int(sock.recv(1024).decode().strip())
-        print(f"Number of available rooms: {room_count}")
+
+def get_room_list(client_socket):
+    """Requests and displays the list of available chat rooms."""
+    client_socket.sendall("/list".encode())
+    room_count = int(client_socket.recv(BUFFER_SIZE).decode().strip())
+    if room_count == 0:
+        print("No chat rooms available.")
+    else:
+        print("Available chat rooms:")
         for _ in range(room_count):
-            room_name = sock.recv(1024).decode().strip()
-            print(f" - {room_name}")
-    except Exception as e:
-        print(f"Error retrieving room list: {e}")
+            room_name = client_socket.recv(BUFFER_SIZE).decode().strip()
+            print(f"- {room_name}")
 
-def join_room(sock):
-    """ Allow user to join or create a chat room. """
+
+def join_room(client_socket):
+    """Allows the user to join or create a chat room."""
     while True:
-        room_name = input("Enter the room name to join (or create a new one): ")
-        sock.sendall(f"/join {room_name}\n".encode())
-        response = sock.recv(1024).decode().strip()
+        room_name = input("Enter a room name to join (or create): ").strip()
+        if not room_name:
+            print("Room name cannot be empty.")
+            continue
+
+        client_socket.sendall(f"/join {room_name}".encode())
+        response = client_socket.recv(BUFFER_SIZE).decode().strip()
+
         if response == "0":
-            print(f"Successfully joined room: {room_name}")
-            return True
-        else:
+            print(f"Joined room: {room_name}")
+            return room_name
+        elif response == "1":
             print("Invalid room name format. Try again.")
-
-def set_nickname(sock):
-    """ Allow user to choose a nickname. """
-    while True:
-        nickname = input("Enter a nickname: ")
-        sock.sendall(f"/nick {nickname}\n".encode())
-        response = sock.recv(1024).decode().strip()
-        if response == "0":
-            print(f"Nickname set to {nickname}")
-            return True
-        elif response == "2":
-            print("Nickname is already taken. Choose another one.")
         else:
-            print("Invalid nickname format. Try again.")
+            print("Unexpected server response. Try again.")
 
-def chat_loop(sock):
-    """ Handle chat interaction between user and server. """
-    print("\n[ You are now in the chatroom! Type messages to chat. ]")
-    print("[ Type '/who' to see who is online, or '/logout' to exit. ]\n")
+
+def set_nickname(client_socket):
+    """Prompts for and set a unique nickname."""
+    while True:
+        nickname = input("Enter your nickname: ").strip()
+        if not nickname:
+            print("Nickname cannot be empty.")
+            continue
+
+        client_socket.sendall(f"/nick {nickname}".encode())
+        response = client_socket.recv(BUFFER_SIZE).decode().strip()
+
+        if response == "0":
+            print(f"Nickname set to: {nickname}")
+            return
+        elif response == "1":
+            print("Invalid nickname format. Try again.")
+        elif response == "2":
+            print("Nickname already taken. Choose another.")
+        else:
+            print("Unexpected server response. Try again.")
+
+
+def list_users(client_socket):
+    """Shows who's in the chat rooms."""
+    client_socket.sendall("/who".encode())
+    print("Users in the room:")
+    while True:
+        user = client_socket.recv(BUFFER_SIZE).decode().strip()
+        if not user:
+            break
+        print(f"- {user}")
+
+
+def chat(client_socket):
+    """So you can....chat in the chat room."""
+    print("You are now in the chat. Type your messages and press Enter to send.")
+    print("Type '/who' to list users or '/logout' to exit.")
 
     while True:
-        reads, _, _ = select.select([sock, sys.stdin], [], [])
-        
+        reads, _, _ = select.select([client_socket, sys.stdin], [], [])
+
         for source in reads:
-            if source == sock:
-                message = sock.recv(1024).decode().strip()
+            if source == client_socket:
+                message = client_socket.recv(BUFFER_SIZE).decode().strip()
                 if not message:
-                    print("Disconnected from server.")
-                    return
-                print(message)
-            else:
-                user_input = sys.stdin.readline().strip()
-                sock.sendall(f"{user_input}\n".encode())
-                
-                if user_input == "/logout":
-                    print("Logging out...")
-                    sock.close()
-                    return
+                    print("Disconnected from the server.")
+                    client_socket.close()
+                    sys.exit(0)
+                print(message)  # Display incoming message
+            elif source == sys.stdin:
+                user_message = input()
+                if user_message.lower() == "/logout":
+                    client_socket.sendall("/logout".encode())
+                    print("You have logged out.")
+                    client_socket.close()
+                    sys.exit(0)
+                elif user_message.lower() == "/who":
+                    list_users(client_socket)
+                else:
+                    client_socket.sendall(user_message.encode())  # Send user message to server
+
 
 def main():
-    sock = connect_to_server()
+    """Main function to run the chat client."""
+    client_socket = connect_to_server()
 
     while True:
-        action = input("Type '/list' to see chat rooms or '/join [room_name]' to enter a room: ")
+        action = input("\nType '/list' to see available rooms or '/join ROOM' to enter a chat room: ").strip()
         if action == "/list":
-            list_rooms(sock)
-        elif action.startswith("/join"):
-            sock.sendall(f"{action}\n".encode())
-            if join_room(sock):
-                break
+            get_room_list(client_socket)
+        elif action.startswith("/join "):
+            room_name = action.split("/join ", 1)[1].strip()
+            if room_name:
+                client_socket.sendall(f"/join {room_name}".encode())
+                response = client_socket.recv(BUFFER_SIZE).decode().strip()
+                if response == "0":
+                    print(f"Joined room: {room_name}")
+                    break
+                else:
+                    print("Invalid room name. Try again.")
         else:
-            print("Invalid command. Please use '/list' or '/join [room_name]'.")
+            print("Invalid command. Try again.")
 
-    if set_nickname(sock):
-        chat_loop(sock)
+    set_nickname(client_socket)
+    chat(client_socket)
+
 
 if __name__ == "__main__":
     main()
